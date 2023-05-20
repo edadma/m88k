@@ -1,7 +1,6 @@
 package io.github.edadma.m88k
 
-import scala.collection.immutable.ArraySeq
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 trait Addressable:
   def base: Long
@@ -12,7 +11,7 @@ trait Addressable:
 class Memory(blocks: Addressable*) extends Addressable:
   require(blocks.nonEmpty, "memory must contain at least one Addressable block")
 
-  val mem = blocks.sortBy(_.base).to(ArraySeq)
+  val mem = blocks.sortBy(_.base).to(immutable.ArraySeq)
   val base = mem.head.base
   val length = mem.last.base + mem.last.length - base
 
@@ -31,7 +30,7 @@ class Memory(blocks: Addressable*) extends Addressable:
 
   def writeByte(addr: Long, data: Byte): Unit = block(addr) getOrElse badAddress writeByte (addr, data)
 
-class IndexedSeqAddressable(seq: IndexedSeq[Byte], val base: Long) extends Addressable:
+class IndexedSeqAddressable(seq: mutable.IndexedSeq[Byte], val base: Long) extends Addressable:
   require(base >= 0, "base is negative")
   require(seq.nonEmpty, "Addressable is empty")
 
@@ -43,4 +42,8 @@ class IndexedSeqAddressable(seq: IndexedSeq[Byte], val base: Long) extends Addre
 
   def writeByte(addr: Long, data: Byte): Unit =
     require(base <= addr && addr < base + length, "address out of range")
-    seq.asInstanceOf[mutable.IndexedSeq[Byte]]((addr - base).toInt) = data
+    seq((addr - base).toInt) = data
+
+def RAM(base: Long, length: Long): Addressable =
+  require(0 < length && length <= Int.MaxValue, "length out of range")
+  new IndexedSeqAddressable(mutable.ArraySeq.fill(length.toInt)(0.asInstanceOf[Byte]), base)

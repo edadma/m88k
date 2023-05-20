@@ -1,7 +1,7 @@
 package io.github.edadma.m88k
 
 @main def run(): Unit =
-  println(search(IndexedSeq(3, 5), 4, _ < _, _ == _))
-  println(search(IndexedSeq(C(3), C(5)), 4, _ < _.a, _ == _.a))
+  val a = RAM(0, 10)
 
-case class C(a: Int)
+  a.writeByte(5, 123)
+  println(a.readByte(5))
