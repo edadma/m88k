@@ -3,17 +3,25 @@ package io.github.edadma.m88k
 import scala.collection.{immutable, mutable}
 
 trait Addressable:
+  def name: String
   def base: Long
   def size: Long
   def readByte(addr: Long): Int
   def writeByte(addr: Long, data: Byte): Unit
+  def baseAddress: String = f"$base%08x".toUpperCase
 
-class Memory(blocks: Addressable*) extends Addressable:
+class Memory(val name: String, blocks: Addressable*) extends Addressable:
   require(blocks.nonEmpty, "memory must contain at least one Addressable block")
 
   val mem = blocks.sortBy(_.base).to(immutable.ArraySeq)
   val base = mem.head.base
   val size = mem.last.base + mem.last.size - base
+
+  for i <- mem.indices do
+    if i < mem.length - 1 && mem(i).base + mem(i).size > mem(i + 1).base then
+      sys.error(
+        s"overlapping Addressable blocks: '${mem(i).name}' (${mem(i).baseAddress}) and '${mem(i + 1).name}' (${mem(i + 1).baseAddress})",
+      )
 
   def block(addr: Long): Option[Addressable] =
     search(mem, addr, _ < _.base, _ == _.base) match
@@ -31,6 +39,7 @@ class Memory(blocks: Addressable*) extends Addressable:
   def writeByte(addr: Long, data: Byte): Unit = block(addr) getOrElse badAddress writeByte (addr, data)
 
 class RAM(val base: Long, val size: Long) extends Addressable:
+  val name = "RAM"
   require(base >= 0, "base is negative")
   require(0 <= size && size <= Int.MaxValue, "size out of range")
 
@@ -45,6 +54,7 @@ class RAM(val base: Long, val size: Long) extends Addressable:
     seq((addr - base).toInt) = data
 
 class ROM(seq: immutable.IndexedSeq[Byte], val base: Long) extends Addressable:
+  val name = "ROM"
   require(base >= 0, "base is negative")
   require(seq.nonEmpty, "Addressable is empty")
 
