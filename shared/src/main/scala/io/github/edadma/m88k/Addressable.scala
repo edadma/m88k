@@ -2,12 +2,31 @@ package io.github.edadma.m88k
 
 import scala.collection.{immutable, mutable}
 
+enum Endian:
+  case LittleEndian, BigEndian
+
 trait Addressable:
   def name: String
   def base: Long
   def size: Long
   def readByte(addr: Long): Int
   def writeByte(addr: Long, data: Byte): Unit
+
+  def readShort(addr: Long, endian: Endian): Int =
+    endian match
+      case Endian.BigEndian    => readByte(addr) << 8 | readByte(addr + 1)
+      case Endian.LittleEndian => readByte(addr + 1) << 8 | readByte(addr)
+
+  def readInt(addr: Long, endian: Endian): Int =
+    endian match
+      case Endian.BigEndian    => readShort(addr, endian) << 16 | readShort(addr + 2, endian)
+      case Endian.LittleEndian => readShort(addr + 2, endian) << 16 | readShort(addr, endian)
+
+  def readLong(addr: Long, endian: Endian): Long =
+    endian match
+      case Endian.BigEndian    => readInt(addr, endian).toLong << 32 | readInt(addr + 4, endian) & 0xffffffff
+      case Endian.LittleEndian => readInt(addr + 4, endian).toLong << 32 | readInt(addr, endian) & 0xffffffff
+
   def baseAddress: String = f"$base%08x".toUpperCase
 
 class Memory(val name: String, blocks: Addressable*) extends Addressable:
