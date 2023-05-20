@@ -1,9 +1,7 @@
 package io.github.edadma.m88k
 
-import math.Ordering.Implicits.infixOrderingOps
-
-def search[E: Ordering](arr: IndexedSeq[E], elem: E): Either[Int, Int] =
-  def search[E: Ordering](arr: IndexedSeq[E], elem: E, low: Int, high: Int): Either[Int, Int] =
+def search[T, E](seq: IndexedSeq[T], elem: E, lt: (E, T) => Boolean): Either[Int, Int] =
+  def search(low: Int, high: Int): Either[Int, Int] =
     // If element not found
     if (low > high) Left(low) // return the insertion point
     else
@@ -11,15 +9,15 @@ def search[E: Ordering](arr: IndexedSeq[E], elem: E): Either[Int, Int] =
       var middle = low + (high - low) / 2
 
       // If element found
-      if (arr(middle) == elem) {
+      if (seq(middle) == elem) {
         return Right(middle)
         // If element is before middle element
-      } else if (elem < arr(middle))
+      } else if (lt(elem, seq(middle)))
         // Searching in the left half
-        search(arr, elem, low, middle - 1)
+        search(low, middle - 1)
       else
         // Searching in the right half
-        search(arr, elem, middle + 1, high)
+        search(middle + 1, high)
 
-  search(arr, elem, 0, arr.length)
+  search(0, seq.length)
 end search
