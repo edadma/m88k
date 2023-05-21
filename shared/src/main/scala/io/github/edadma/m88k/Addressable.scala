@@ -3,29 +3,38 @@ package io.github.edadma.m88k
 import scala.collection.{immutable, mutable}
 
 enum Endian:
-  case LittleEndian, BigEndian
+  case Little, Big
 
 trait Addressable:
   def name: String
   def base: Long
   def size: Long
   def readByte(addr: Long): Int
-  def writeByte(addr: Long, data: Byte): Unit
+  def writeByte(addr: Long, data: Int): Unit
 
   def readShort(addr: Long, endian: Endian): Int =
     endian match
-      case Endian.BigEndian    => readByte(addr) << 8 | readByte(addr + 1)
-      case Endian.LittleEndian => readByte(addr + 1) << 8 | readByte(addr)
+      case Endian.Big    => readByte(addr) << 8 | readByte(addr + 1)
+      case Endian.Little => readByte(addr + 1) << 8 | readByte(addr)
+
+  def writeShort(addr: Long, data: Short, endian: Endian): Unit =
+    endian match
+      case Endian.Big =>
+        writeByte(addr, data >> 8)
+        writeByte(addr + 1, data)
+      case Endian.Little =>
+        writeByte(addr + 1, data >> 8)
+        writeByte(addr, data)
 
   def readInt(addr: Long, endian: Endian): Int =
     endian match
-      case Endian.BigEndian    => readShort(addr, endian) << 16 | readShort(addr + 2, endian)
-      case Endian.LittleEndian => readShort(addr + 2, endian) << 16 | readShort(addr, endian)
+      case Endian.Big    => readShort(addr, endian) << 16 | readShort(addr + 2, endian)
+      case Endian.Little => readShort(addr + 2, endian) << 16 | readShort(addr, endian)
 
   def readLong(addr: Long, endian: Endian): Long =
     endian match
-      case Endian.BigEndian    => readInt(addr, endian).toLong << 32 | readInt(addr + 4, endian) & 0xffffffff
-      case Endian.LittleEndian => readInt(addr + 4, endian).toLong << 32 | readInt(addr, endian) & 0xffffffff
+      case Endian.Big    => readInt(addr, endian).toLong << 32 | readInt(addr + 4, endian) & 0xffffffff
+      case Endian.Little => readInt(addr + 4, endian).toLong << 32 | readInt(addr, endian) & 0xffffffff
 
   def baseAddress: String = f"$base%08x".toUpperCase
 
@@ -55,7 +64,7 @@ class Memory(val name: String, blocks: Addressable*) extends Addressable:
 
   def readByte(addr: Long): Int = block(addr) getOrElse badAddress readByte addr
 
-  def writeByte(addr: Long, data: Byte): Unit = block(addr) getOrElse badAddress writeByte (addr, data)
+  def writeByte(addr: Long, data: Int): Unit = block(addr) getOrElse badAddress writeByte (addr, data)
 
 class RAM(val base: Long, val size: Long) extends Addressable:
   val name = "RAM"
@@ -68,9 +77,9 @@ class RAM(val base: Long, val size: Long) extends Addressable:
     require(base <= addr && addr < base + size, "address out of range")
     seq((addr - base).toInt) & 0xff
 
-  def writeByte(addr: Long, data: Byte): Unit =
+  def writeByte(addr: Long, data: Int): Unit =
     require(base <= addr && addr < base + size, "address out of range")
-    seq((addr - base).toInt) = data
+    seq((addr - base).toInt) = data.toByte
 
 class ROM(seq: immutable.IndexedSeq[Byte], val base: Long) extends Addressable:
   val name = "ROM"
@@ -83,4 +92,4 @@ class ROM(seq: immutable.IndexedSeq[Byte], val base: Long) extends Addressable:
     require(base <= addr && addr < base + size, "address out of range")
     seq((addr - base).toInt) & 0xff
 
-  def writeByte(addr: Long, data: Byte): Unit = sys.error("not writable")
+  def writeByte(addr: Long, data: Int): Unit = sys.error("not writable")
